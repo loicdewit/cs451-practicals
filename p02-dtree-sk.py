@@ -88,15 +88,65 @@ f.fit(train_X, train_y)
 # did it memorize OK?
 print("Score on Training: {:.3f}".format(f.score(train_X, train_y)))
 print("Score on Testing: {:.3f}".format(f.score(test_X, test_y)))
+print("\n \n \n")
 
 ## Actual 'practical' assignment.
-TODO(
-    "1. Figure out what all of the parameters I listed for the DecisionTreeClassifier do."
-)
+
+# Question 1: what does each of the parameters do?
+
+"""
+1) The 'splitter' parameter determines how we choose the split between data points. It can either be the best split or a random one.
+
+2) The 'criterion' parameter sets which loss function we are using - Gini impurity or entropy - to assess which split is the best.
+
+3) 'max_features' the number of features we look at when we try to find the best split. Note that it does not stop looking until a satisfactory split has been found, which may be greater than max_features.
+
+4) 'max_depth' is the maximum number of recursions of the tree. If 'None', it will stop when all the leaves are pure (which I am presuming is
+not great for generalization).
+
+5) Corresponds to setting the seed for random selection of the split. When we consider all the features, if some of them are equal, it will randomly choose them. When we consider less than all the features,
+it will choose randomly which features are considered for the split. Setting this variable is for replicability purposes. 
+"""
+
+
 # Consult the documentation: https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html
-TODO("2. Pick one parameter, vary it, and find some version of the 'best' setting.")
+# Question 2: 2. Pick one parameter, vary it, and find some version of the 'best' setting.
+
+# I will varry the maximum depth.
+
 # Default performance:
 # There are 2079 training examples and 693 testing examples.
 # Score on Training: 1.000
 # Score on Testing: 0.889
-TODO("3. Leave clear code for running your experiment!")
+
+# Question 3. Leave clear code for running your experiment!")
+
+results = []
+
+for i in range(20):
+    f1 = DecisionTreeClassifier(
+        splitter="best",
+        max_features=None,
+        criterion="gini",
+        max_depth=i + 1,
+        random_state=13,
+    )  # type:ignore
+    # train the tree!
+    f1.fit(train_X, train_y)
+    # did it memorize OK?
+    print("Iteration: {} ".format(i))
+    score_training = f1.score(train_X, train_y)
+    score_testing = f1.score(test_X, test_y)
+    results.append((score_testing, i + 1))
+    print("Score on Training: {:.3f}".format(score_training))
+    print("Score on Testing: {:.3f} \n".format(score_testing))
+
+# Will use the best score on the testing as heuristic to gauge the best level of recursion. Since in practice, I believe a high training score
+# is meaningless if it does not generalize
+
+best_score = max(results, key=lambda tup: tup[0])
+print(
+    "The best score on training was with a recursion level of: {}, with a score of {}.".format(
+        best_score[1], best_score[0]
+    )
+)

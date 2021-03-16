@@ -13,8 +13,13 @@ def TODO(for_what: str) -> None:
 
 
 def __create_data_directory():
+    # Creates a directory
+    # exist_ok = False (standard), returns an error if the directory already exists
     os.makedirs("data", exist_ok=True)
     assert os.path.exists("data") and os.path.isdir("data")
+
+
+# Note on the with keyword:
 
 
 def __download_file(url: str, path: str):
