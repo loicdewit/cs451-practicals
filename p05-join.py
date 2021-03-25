@@ -57,15 +57,34 @@ class JoinedWikiData:
     body: str
 
 
-print(len(pages), len(labels))
-print(pages[0])
-print(labels[0])
+# print(len(pages), len(labels))
+# print(pages[0])
+# print(labels[0])
 
 joined_data: Dict[str, JoinedWikiData] = {}
 
 
-# TODO("1. create a list of JoinedWikiData from the ``pages`` and ``labels`` lists.")
-# This challenge has some very short solutions, so it's more conceptual. If you're stuck after ~10-20 minutes of thinking, ask!
+"""
+Problem 1 answer: this is definitely not a neat answer but I tried a couple libraries and did not manage to get their functions working, so I went for the brute force approach.
+"""
+
+
+def find_item(list_labels: List[JustWikiLabel], item: str):
+    """
+    Finds the element with the given idea in the list of JustWikiLabel.
+    """
+    for element in list_labels:
+        if element.wiki_id == item:
+            return element
+
+
+for item in pages:
+    label = find_item(labels, item.wiki_id)
+    joined_data[item.wiki_id] = JoinedWikiData(
+        item.wiki_id, label.is_literary, item.title, item.body
+    )
+
+
 ############### Problem 1 ends here ###############
 
 # Make sure it is solved correctly!
@@ -120,6 +139,7 @@ X_test = word_to_column.transform(ex_test)
 print("Ready to Learn!")
 from sklearn.linear_model import LogisticRegression, SGDClassifier, Perceptron
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score
 
 models = {
@@ -130,6 +150,7 @@ models = {
 }
 
 for name, m in models.items():
+    print("Printing the name and m: {} {}".format(name, m))
     m.fit(X_train, y_train)
     print("{}:".format(name))
     print("\tVali-Acc: {:.3}".format(m.score(X_vali, y_vali)))
@@ -138,6 +159,7 @@ for name, m in models.items():
     else:
         scores = m.predict_proba(X_vali)[:, 1]
     print("\tVali-AUC: {:.3}".format(roc_auc_score(y_score=scores, y_true=y_vali)))
+
 
 """
 Results should be something like:
@@ -155,10 +177,40 @@ DTree:
         Vali-Acc: 0.739
         Vali-AUC: 0.71
 """
-TODO("2. Explore why DecisionTrees are not beating linear models. Answer one of:")
-TODO("2.A. Is it a bad depth?")
-TODO("2.B. Do Random Forests do better?")
-TODO(
-    "2.C. Is it randomness? Use simple_boxplot and bootstrap_auc/bootstrap_acc to see if the differences are meaningful!"
-)
-TODO("2.D. Is it randomness? Control for random_state parameters!")
+
+"""
+Problem 2: Explore why DecisionTrees are not beating linear models.
+2.A.: I will be varying the depth to see if it improves the decision tree performance.
+"""
+# Experimenting with the recursion depth of the decision tree:
+for i in range(20):
+    f = DecisionTreeClassifier(max_depth=(i + 1) * 2)
+    f.fit(X_train, y_train)
+    print("\tVali-Acc: {:.3}".format(f.score(X_vali, y_vali)))
+    score_dtree = m.predict_proba(X_vali)[:, 1]
+    print("\tVali-AUC: {:.3}".format(roc_auc_score(y_score=score_dtree, y_true=y_vali)))
+    print("\n")
+
+"""
+Changing the recursion depth for the DecisionTreeClassifier did not change its performance according to the AUC and accuracy that much - at least not enough to allow it to catch up with the other models. Thus, I am postulating that its bad performance is related to the fact that the problem at hand is linear and has a shape which does not lend itself to the "learning process" of the decision tree. I am curious to see if the random forest is able to outperform the decision tree, so I will try that next.
+"""
+
+print("Evaluating the performance of the random forest:")
+random_forest = RandomForestClassifier()
+params = {"criterion": "entropy"}
+random_forest.fit(X_train, y_train)
+print("\tVali-Acc: {:.3}".format(random_forest.score(X_vali, y_vali)))
+score_forest = random_forest.predict_proba(X_vali)[:, 1]
+print("\tVali-AUC: {:.3}".format(roc_auc_score(y_score=score_forest, y_true=y_vali)))
+
+
+"""
+Two sample runs of the code above yielded the following results for the random forest:
+        Vali-Acc: 0.825
+        Vali-AUC: 0.874
+
+        Vali-Acc: 0.825
+        Vali-AUC: 0.867
+
+The random forest does therefore do better than the decision tree in this instance, as measured both by the accuracy measure and the AUC.
+"""
