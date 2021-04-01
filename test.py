@@ -1,13 +1,14 @@
 import json
 from dataclasses import dataclass
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
-
-matrix: List[List[float]] = []
-for i in range(10):
-    temp = []
-    for j in range(10):
-        temp.append(j)
-    matrix.append(temp)
-
-print(matrix)
+dic = [1, 2, 3, 4, 5]
+i = -1
+while i < 3:
+    i += 1
+    inp = input("type... {}".format(dic[i]))
+    if inp == "back":
+        print("going back...")
+        i = i - 1
+    else:
+        print("moving on...")
