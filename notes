@@ -1,0 +1,6 @@
+Don't really understand his linear model class - will skip for now
+
+trains perceptron returns linear model
+
+ModelTrainingCurve - is it just a wrapper for the data to plot?
+

@@ -41,7 +41,20 @@ with open(dataset_local_path("poetry_id.jsonl")) as fp:
 ## CONVERT TO MATRIX:
 
 feature_numbering = DictVectorizer(sort=True, sparse=False)
+
 X = feature_numbering.fit_transform(examples)
+# len(X) = 2772
+""" X[0] = [9.61471103e-01 5.25394046e-02 3.20000000e+01 1.00000000e+00
+ 5.93750000e-01 0.00000000e+00 4.91132301e-01 1.90000000e+01
+ 2.35000000e+02 1.00000000e+00 1.82978723e-01 0.00000000e+00
+ 3.86649079e-01 4.30000000e+01 1.75131350e-03 3.20000000e+01
+ 5.81475129e-01 2.15600879e-01 5.01715266e-02 1.61616054e-01
+ 6.89922813e+00 2.35000000e+02 6.79389313e-01 3.20000000e+01
+ 8.58490566e-01 6.59211514e-01 1.10634648e-01 1.87868179e-01
+ 2.10947684e+01 9.33501122e-01 3.90000000e+01 1.27659574e-02
+ 3.20000000e+01 1.60000000e+01 7.34375000e+00 1.00000000e+00
+ 4.38469907e+00 2.35000000e+02] 
+ """
 
 print("Features as {} matrix.".format(X.shape))
 
@@ -63,12 +76,64 @@ rX_train, rX_vali, y_train, y_vali = train_test_split(
 
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-# TODO: Exploration 2: What normalization is best for your models?
-# THINK: Why didn't we normalize for decision trees?
-#
 # These are the three approaches to scaling I see in practice: variance / standard-deviation, min/max, nothing.
 # This replaces the X / 1000 hack we did a few weeks ago.
-norm = "max"
+
+"""
+Exploration 2: What normalization is best for your models? 
+
+Sample run with norm="max":
+
+P. Train-Accuracy: 0.929
+P. Vali-Accuracy: 0.936
+AP. Train-Accuracy: 0.94
+AP. Vali-Accuracy: 0.941
+skP. Train-Accuracy: 0.921
+skP. Vali-Accuracy: 0.915
+mlp. Train-Accuracy: 0.954
+mlp. Vali-Accuracy: 0.939
+sgdc. Train-Accuracy: 0.94
+sgdc. Vali-Accuracy: 0.948
+
+Sample run with norm="var":
+
+The first thing to notice is that it significantly slower to run...
+
+P. Train-Accuracy: 0.929
+P. Vali-Accuracy: 0.928
+AP. Train-Accuracy: 0.93
+AP. Vali-Accuracy: 0.939
+skP. Train-Accuracy: 0.934
+skP. Vali-Accuracy: 0.939
+mlp. Train-Accuracy: 0.999
+mlp. Vali-Accuracy: 0.948
+sgdc. Train-Accuracy: 0.941
+sgdc. Vali-Accuracy: 0.945
+
+Sample run with norm="": 
+
+P. Train-Accuracy: 0.872
+P. Vali-Accuracy: 0.863
+AP. Train-Accuracy: 0.905
+AP. Vali-Accuracy: 0.9
+skP. Train-Accuracy: 0.904
+skP. Vali-Accuracy: 0.907
+mlp. Train-Accuracy: 0.939
+mlp. Vali-Accuracy: 0.936
+sgdc. Train-Accuracy: 0.899
+sgdc. Vali-Accuracy: 0.901
+
+It seems there is not a significant difference between norm="var" and norm="max" - both yield somewhat similar, high accuracy levels. However, where there is a clear difference is between those two and norm=nothing. Both "var" and "max" outperform non-normalization.
+
+Why didn't we normalize for decision trees?
+
+We didn't normalize decision trees because the decision tree learning algorithm is unimpacted by whether or not different
+features have different orders of magnitude. This is because it looks at each feature individually when looking for splits,
+and the split points themselves are unaltered by whether or not there are large differences between the values the feature takes on.
+
+"""
+
+norm = ""
 if norm == "var":
     scale = StandardScaler()
     X_train = scale.fit_transform(rX_train)
@@ -240,10 +305,40 @@ print("skP. Vali-Accuracy: {:.3}".format(skP.score(X_vali, y_vali)))
 #
 ## TODO Exploration 1A: Try a MLP (Multi-Layer Perceptron).
 mlp = MLPClassifier(hidden_layer_sizes=(32,))
+print("Train sklearn-MLPClassifier (mlp)")
+for iter in tqdm(range(1000)):
+    mlp.partial_fit(X_train, y_train, classes=(0, 1))
+    learning_curves["skMLPClassifier"].add_sample(mlp, X_train, y_train, X_vali, y_vali)
+print("mlp. Train-Accuracy: {:.3}".format(mlp.score(X_train, y_train)))
+print("mlp. Vali-Accuracy: {:.3}".format(mlp.score(X_vali, y_vali)))
+
 ## TODO Exploration 1B: Try another Linear Model
 sgdc = SGDClassifier()
+print("Train sklearn-SGDCClassifier (sgdc)")
+for iter in tqdm(range(1000)):
+    sgdc.partial_fit(X_train, y_train, classes=(0, 1))
+    learning_curves["skSGDCClassifier"].add_sample(
+        sgdc, X_train, y_train, X_vali, y_vali
+    )
+print("sgdc. Train-Accuracy: {:.3}".format(sgdc.score(X_train, y_train)))
+print("sgdc. Vali-Accuracy: {:.3}".format(sgdc.score(X_vali, y_vali)))
 
 ## TODO Think: Why can't we make a graph like this for DecisionTreeClassifier?
+
+"""
+Answers:
+I think, based on the graph of the skPerceptron leearning curves, that the Sci-Kit Learn's Perceptron is a regular perceptron. This is because it also displays the jagged pattern in terms of accuracy as the number of iterations increases, which the averaged-perceptron does not.
+
+Exploration 1A: done.
+
+Exploration 1B: done.
+
+Why can't we make a graph like this for DecisionTreeClassifier?
+
+Is it because the DecisionTreeClassifier is recursive, and therefore it is not possible to
+plot the improvement over each recursive call?
+
+"""
 
 #%% Plot!
 
