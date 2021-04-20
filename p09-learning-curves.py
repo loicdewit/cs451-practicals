@@ -58,7 +58,7 @@ acc_std = []
 for train_percent in percentages:
     n_samples = int((train_percent / 100) * N)
     print("{}% == {} samples...".format(train_percent, n_samples))
-    label = "{}".format(train_percent, n_samples)
+    label = "{} {}".format(train_percent, n_samples)
 
     # So we consider num_trials=100 subsamples, and train a model on each.
     scores[label] = []

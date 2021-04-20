@@ -33,29 +33,42 @@ def extract_features(row):
     """
     title = row["title"].lower()
     body = row["body"]
+    if "list of" in title:
+        print(title)
 
     new_features: T.Dict[str, T.Any] = {}
     words = WORDS.findall(body)
     numbers = [int(x) for x in NUMBERS.findall(body)]
 
     new_features = {
-        "disambig": "disambiguation" in title,
-        "page_rank": row["page_rank"],
-        "length": len(words),
-        # "18xx": sum(1 for x in numbers if 1800 < x <= 1900),
-        "random1": random.random(),
-        "random2": random.random(),
-        "random3": random.random(),
-        "random4": random.random(),
+        # "disambig": "disambiguation" in title,
+        # "page_rank": row["page_rank"],            # removed because low level of importance - lower than random feature
+        "length": len(words),  # kepts because highest level of importance
+        "18xx": sum(
+            1 for x in numbers if 1800 < x <= 1900
+        ),  # kept because significant drop in performance when not included
+        # "<1800": sum(1 for x in numbers if x < 1800),  # removed because little difference in performance with or without
+        ">1900": sum(
+            1 for x in numbers if x > 1900
+        ),  # kept because significant drop in performance when not included
+        # "list-of": "list of" in title,  # removed because little difference in performance with or without
+        # "random1": random.random()  # used to assess which other features are important
+        # "random2": random.random(),
+        # "random3": random.random(),
+        # "random4": random.random(),
     }
-    if len(numbers) > 0:
-        new_features["mean_n"] = np.mean(numbers)
-        new_features["std_n"] = np.std(numbers)
+    # if len(numbers) > 0:
+    #     new_features["mean_n"] = np.mean(
+    #         numbers
+    #     )  # removed because little difference in performance with or without
+    #     new_features["std_n"] = np.std(
+    #         numbers
+    #     )  # removed because little difference in performance with or without
 
     return new_features
 
 
-# right now each entry of the dataframe is a dictionary; json_normalize flattenst hat for us.
+# right now each entry of the dataframe is a dictionary; json_normalize flattens that for us.
 designed_f = pd.json_normalize(df.apply(extract_features, axis="columns"))
 
 #%%
@@ -105,10 +118,11 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 
-# Direct feature-importances (can think of them as how many times a feature was used):
+
 rf = RandomForestClassifier(random_state=RAND, n_estimators=100)
 rf.fit(train_X, train_y)
 
+# Direct feature-importances (can think of them as how many times a feature was used):
 # loop over each tree and ask them how important each feature was!
 importances = dict((name, []) for name in numberer.feature_names_)
 for tree in rf.estimators_:
@@ -199,3 +213,17 @@ plt.show()
 # ... could adding a random feature help you here?
 
 # (optional). Consider improving ``train_and_eval`` to use more powerful models
+
+
+"""
+1. Removed EVIL features.
+It is interesting to note that the evil features all ranked quite highly in terms of relative importance the first time I ran the code.
+In that way, they "overshadowed" the other features, despite being entirely random.
+
+2. 2.1. This feature seems to come second in relative importance after length. Adding the feature ">1900" helped too!
+   2.2. The number of articles which were a list was quite small, so it did not really help.
+
+3. It is interesting to note that sometimes the "relative importance" analysis and the "feature removal analysis" are contradictory.
+They need to be analysed in conjunction to arrive at a conclusion about the importance of a feature. 
+I removed all features except for "18xx", ">1900" and "length".  
+"""

@@ -7,6 +7,7 @@ from tqdm import tqdm
 import random
 from typing import List, Dict
 from sklearn.utils import resample
+
 from scipy.special import expit
 from shared import bootstrap_auc
 from sklearn.model_selection import train_test_split
@@ -19,12 +20,14 @@ np.random.seed(RANDOM_SEED)
 # import data; choose feature space
 from dataset_poetry import y_train, Xd_train, y_vali, Xd_vali
 
+#
 X_train = Xd_train["numeric"]
 X_vali = Xd_vali["numeric"]
 
 #%%
 from sklearn.linear_model import LogisticRegression
 
+# This is just scikit learn's logistic regression model
 m = LogisticRegression(random_state=RANDOM_SEED, penalty="none", max_iter=2000)
 m.fit(X_train, y_train)
 
@@ -32,6 +35,11 @@ print("skLearn-LR AUC: {:.3}".format(np.mean(bootstrap_auc(m, X_vali, y_vali))))
 print("skLearn-LR Acc: {:.3}".format(m.score(X_vali, y_vali)))
 
 
+# Creates a logistic regression class with methods:
+# - random parameter generation
+# - decision_function
+# - predict
+# - score
 @dataclass
 class LogisticRegressionModel:
     # Managed to squeeze bias into this weights array by adding some +1s.
@@ -61,6 +69,8 @@ class LogisticRegressionModel:
         return metrics.accuracy_score(np.asarray(y), y_hat)  # type:ignore
 
 
+# Creates a class ModelTrainingCurve
+# An object instance uses add_sample method to add scores from a sample run
 @dataclass
 class ModelTrainingCurve:
     train: List[float] = field(default_factory=list)
@@ -119,18 +129,19 @@ def train_logistic_regression_gd(name: str, num_iter=100):
     return m
 
 
-m = train_logistic_regression_gd("LR-GD", num_iter=2000)
-print("LR-GD AUC: {:.3}".format(np.mean(bootstrap_auc(m, X_vali, y_vali))))
-print("LR-GD Acc: {:.3}".format(m.score(X_vali, y_vali)))
+# m = train_logistic_regression_gd("LR-GD", num_iter=2000)
+# print("LR-GD AUC: {:.3}".format(np.mean(bootstrap_auc(m, X_vali, y_vali))))
+# print("LR-GD Acc: {:.3}".format(m.score(X_vali, y_vali)))
 
 
-def train_logistic_regression_sgd_opt(name: str, num_iter=100, minibatch_size=512):
+def train_logistic_regression_sgd_opt(
+    name: str, num_iter=100, minibatch_size=512, alpha=0.1
+):
     """ This is bootstrap-sampling minibatch SGD """
     plot = ModelTrainingCurve()
     learning_curves[name] = plot
 
     m = LogisticRegressionModel.random(D)
-    alpha = 0.1
     n_samples = max(1, N // minibatch_size)
 
     for _ in tqdm(range(num_iter), total=num_iter, desc=name):
@@ -142,9 +153,21 @@ def train_logistic_regression_sgd_opt(name: str, num_iter=100, minibatch_size=51
     return m
 
 
-m = train_logistic_regression_sgd_opt("LR-SGD", num_iter=2000)
-print("LR-SGD AUC: {:.3}".format(np.mean(bootstrap_auc(m, X_vali, y_vali))))
-print("LR-SGD Acc: {:.3}".format(m.score(X_vali, y_vali)))
+alphas = [0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 3.0]  # , 4.0, 5.0, 6.0, 7.0]
+
+for alph in alphas:
+    m = train_logistic_regression_sgd_opt(
+        "LR-SGD-{}".format(alph), num_iter=500, alpha=alph
+    )
+    print(
+        "LR-SGD-{} AUC: {:.3}".format(alph, np.mean(bootstrap_auc(m, X_vali, y_vali)))
+    )
+    print("LR-SGD-{} Acc: {:.3}".format(alph, m.score(X_vali, y_vali)))
+
+
+# m = train_logistic_regression_sgd_opt("LR-SGD", num_iter=2000)
+# print("LR-SGD AUC: {:.3}".format(np.mean(bootstrap_auc(m, X_vali, y_vali))))
+# print("LR-SGD Acc: {:.3}".format(m.score(X_vali, y_vali)))
 
 
 ## Create training curve plots:
@@ -178,6 +201,20 @@ plt.show()
 #
 # 1. pick SGD or GD (I recommend SGD)
 # 2. pick a smaller max_iter that gets good performance.
+
+"""
+1. I will pick SGD (as per your recommendation)
+2. Picking a smaller max_iter that gets good performance: based on the AUC of the training and validation curves,
+500 is a max_iter which would already produce good performance for LR-SGD.
+
+I did experiment A. 
+As expected, smaller values of alpha were slower to converge. For instance, a value of 0.01 only reaches about 0.85 accuracy after 500 iterations. 
+On the other hand, higher values of alpha converge faster, up to a point where they don't converge.
+
+Based on some experimentation, a good trade-off between speed of convergence and AUC score is a rate alpha of 3. 
+Above 3, there starts to be "jaggedness" in the graph - which indicates that the algorithm sometimes actually overshoots the minimum value.
+An alpha of 4.0 still works relatively fine. 5.0 starts to show issues. And the graphs for 6.0 and 7.0 suggested that the algorithm was not converging.
+"""
 
 # Do either A or B:
 

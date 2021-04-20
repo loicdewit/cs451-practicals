@@ -33,8 +33,13 @@ with open(dataset_local_path("AirQualityUCI.csv")) as fp:
             elif column_name == "Time":
                 time = column_value
             else:
-                datapoint[column_name] = float(column_value.replace(",", "."))
+                as_float = float(column_value.replace(",", "."))
+                if as_float == -200:
+                    continue
+                datapoint[column_name] = as_float
         if not datapoint:
+            continue
+        if "CO(GT)" not in datapoint:
             continue
         target = datapoint["CO(GT)"]
         del datapoint["CO(GT)"]
@@ -63,10 +68,11 @@ ex_train, ex_vali, y_train, y_vali = train_test_split(
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 feature_numbering = DictVectorizer(sparse=False)
+
 # Learn columns from training data (again)
 feature_numbering.fit(ex_train)
-# Translate our list of texts -> matrices of counts
 rX_train = feature_numbering.transform(ex_train)
+
 rX_vali = feature_numbering.transform(ex_vali)
 rX_test = feature_numbering.transform(ex_test)
 
@@ -90,8 +96,39 @@ print(m.score(X_vali, y_vali))
 ## Lab TODO:
 # Mandatory:
 # - Try some other regression models.
+
+"""
+    TRYING SOME REGRESSION MODELS:
+"""
+sgd = SGDRegressor()
+sgd.fit(X_train, y_train)
+print("sgd: Train-Accuracy: {:.3}".format(sgd.score(X_train, y_train)))
+print("sgd: Vali-Accuracy: {:.3}".format(sgd.score(X_vali, y_vali)))
+
+decision_tree_model = DecisionTreeRegressor()
+decision_tree_model.fit(X_train, y_train)
+print(
+    "DTree: Train-Accuracy: {:.3}".format(decision_tree_model.score(X_train, y_train))
+)
+print("DTree: Vali-Accuracy: {:.3}".format(decision_tree_model.score(X_vali, y_vali)))
+mlp = MLPRegressor(hidden_layer_sizes=(32,), max_iter=2000)
+mlp.fit(X_train, y_train)
+print("MLP: Train-Accuracy: {:.3}".format(mlp.score(X_train, y_train)))
+print("MLP: Vali-Accuracy: {:.3}".format(mlp.score(X_vali, y_vali)))
+
+"""
+    PLOTTING the prediction vs actualf or the validation set:
+"""
+import matplotlib.pyplot as plt
+
+y_predictions = m.predict(X_vali)
+for i in range(3):
+    print(y_predictions[i])
+
+plt.scatter(y_vali, y_predictions)
+plt.show()
+
 # Options:
-#    - Try all the other regression models.
 #    - Research the AirQualityUCI dataset to see what the best approaches are!
 #    - Try at least one, plot a (y_pred, y_actual) scatter plot (e.g., visualize correlation / R**2)
 #    - [Difficult] see the brute-force kNN below, try to refactor the loops out of python.
