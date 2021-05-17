@@ -60,6 +60,20 @@ tree_num = []
 tree_vali = []
 forest_vali = []
 
+# TODO Experiment:
+# What if instead of every tree having the same 1.0 weight, we considered some alternatives?
+#  - weight = the accuracy of that tree on the whole training set.
+#  - weight = the accuracy of that tree on the validation set.
+#  - weight = random.random()
+#  - weight = 0.1
+
+# Option 1: weight based on whole training set accuracy
+# Option 2: weight based on vali set accuracy
+# Option 3: weight = random.random()
+# Option 4: weight = 0.1
+# Option 0: weight = 1
+option: bool = 3
+
 forest = WeightedEnsemble()
 (N, D) = X_train.shape
 for i in range(100):
@@ -67,15 +81,25 @@ for i in range(100):
     X_sample, y_sample = resample(X_train, y_train)  # type:ignore
 
     # TODO create a tree model.
-    tree = TODO("train and fit a model to the sampled data")
+    tree = DecisionTreeClassifier(
+        criterion="entropy", max_depth=4, random_state=RANDOM_SEED
+    )
+    tree.fit(X_sample, y_sample)
+    training_set_acc = tree.score(X_train, y_train)
+    vali_set_acc = tree.score(X_vali, y_vali)
 
-    # TODO Experiment:
-    # What if instead of every tree having the same 1.0 weight, we considered some alternatives?
-    #  - weight = the accuracy of that tree on the whole training set.
-    #  - weight = the accuracy of that tree on the validation set.
-    #  - weight = random.random()
-    #  - weight = 0.1
-    weight = 1.0
+    print("Using option: {}".format(option))
+
+    if option == 1:
+        weight = 1.0 * training_set_acc
+    elif option == 2:
+        weight = 1.0 * vali_set_acc
+    elif option == 3:
+        weight = random.random()
+    elif option == 4:
+        weight = 0.1
+    elif option == 0:
+        weight = 1
 
     # hold onto it for voting
     forest.insert(weight, tree)
@@ -93,3 +117,8 @@ plt.plot(tree_num, tree_vali, label="Individual Trees", alpha=0.5)
 plt.plot(tree_num, forest_vali, label="Random Forest")
 plt.legend()
 plt.show()
+
+"""
+Conclusion:
+I do not find any difference between the validation accuracy of the different weighted decision trees.
+"""
